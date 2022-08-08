@@ -1,0 +1,73 @@
+Samples,Genus,Relative Abundance,Group
+T1,Bacillus,0.202157779,Standard Illumina method 
+T1,Enterococcus,0.106658311,Standard Illumina method 
+T1,Escherichia-Shigella,0.133883474,Standard Illumina method 
+T1,Limosilactobacillus,0.03559807,Standard Illumina method 
+T1,Listeria,0.149194797,Standard Illumina method 
+T1,Pseudomonas,0.071045141,Standard Illumina method 
+T1,Salmonella,0.12869665,Standard Illumina method 
+T1,Staphylococcus,0.16840945,Standard Illumina method 
+T1,Others,0.004356328,Standard Illumina method 
+T2,Bacillus,0.190925413,Standard Illumina method 
+T2,Enterococcus,0.107865803,Standard Illumina method 
+T2,Escherichia-Shigella,0.134221256,Standard Illumina method 
+T2,Limosilactobacillus,0.031135344,Standard Illumina method 
+T2,Listeria,0.156889708,Standard Illumina method 
+T2,Pseudomonas,0.076526292,Standard Illumina method 
+T2,Salmonella,0.13509797,Standard Illumina method 
+T2,Staphylococcus,0.164251701,Standard Illumina method 
+T2,Others,0.003086512,Standard Illumina method 
+T3,Bacillus,0.15777182,Standard Illumina method 
+T3,Enterococcus,0.108179887,Standard Illumina method 
+T3,Escherichia-Shigella,0.146035681,Standard Illumina method 
+T3,Limosilactobacillus,0.034230406,Standard Illumina method 
+T3,Listeria,0.15658303,Standard Illumina method 
+T3,Pseudomonas,0.081309861,Standard Illumina method 
+T3,Salmonella,0.14536119,Standard Illumina method 
+T3,Staphylococcus,0.167265277,Standard Illumina method 
+T3,Others,0.003262849,Standard Illumina method 
+T4,Bacillus,0.190316398,Standard Illumina method 
+T4,Enterococcus,0.116280149,Standard Illumina method 
+T4,Escherichia-Shigella,0.144312326,Standard Illumina method 
+T4,Limosilactobacillus,0.032986054,Standard Illumina method 
+T4,Listeria,0.158139412,Standard Illumina method 
+T4,Pseudomonas,0.082233025,Standard Illumina method 
+T4,Salmonella,0.146567103,Standard Illumina method 
+T4,Staphylococcus,0.125717052,Standard Illumina method 
+T4,Others,0.003448482,Standard Illumina method 
+T1,Bacillus,0.153619278, 'N'(0-10) spacer-linked method
+T1,Enterococcus,0.113919914, 'N'(0-10) spacer-linked method
+T1,Escherichia-Shigella,0.154549339, 'N'(0-10) spacer-linked method
+T1,Limosilactobacillus,0.043888828, 'N'(0-10) spacer-linked method
+T1,Listeria,0.143405364, 'N'(0-10) spacer-linked method
+T1,Pseudomonas,0.088188224, 'N'(0-10) spacer-linked method
+T1,Salmonella,0.158830972, 'N'(0-10) spacer-linked method
+T1,Staphylococcus,0.140740865, 'N'(0-10) spacer-linked method
+T1,Others,0.002857215, 'N'(0-10) spacer-linked method
+T2,Bacillus,0.130500428, 'N'(0-10) spacer-linked method
+T2,Enterococcus,0.112566894, 'N'(0-10) spacer-linked method
+T2,Escherichia-Shigella,0.155983157, 'N'(0-10) spacer-linked method
+T2,Limosilactobacillus,0.043206563, 'N'(0-10) spacer-linked method
+T2,Listeria,0.147158986, 'N'(0-10) spacer-linked method
+T2,Pseudomonas,0.090707779, 'N'(0-10) spacer-linked method
+T2,Salmonella,0.160940462, 'N'(0-10) spacer-linked method
+T2,Staphylococcus,0.155463101, 'N'(0-10) spacer-linked method
+T2,Others,0.00347263, 'N'(0-10) spacer-linked method
+T3,Bacillus,0.181261784, 'N'(0-10) spacer-linked method
+T3,Enterococcus,0.101725888, 'N'(0-10) spacer-linked method
+T3,Escherichia-Shigella,0.149369108, 'N'(0-10) spacer-linked method
+T3,Limosilactobacillus,0.042596084, 'N'(0-10) spacer-linked method
+T3,Listeria,0.132835388, 'N'(0-10) spacer-linked method
+T3,Pseudomonas,0.086120377, 'N'(0-10) spacer-linked method
+T3,Salmonella,0.155068891, 'N'(0-10) spacer-linked method
+T3,Staphylococcus,0.14831037, 'N'(0-10) spacer-linked method
+T3,Others,0.00271211, 'N'(0-10) spacer-linked method
+T4,Bacillus,0.165802318, 'N'(0-10) spacer-linked method
+T4,Enterococcus,0.106520744, 'N'(0-10) spacer-linked method
+T4,Escherichia-Shigella,0.14573673, 'N'(0-10) spacer-linked method
+T4,Limosilactobacillus,0.049107688, 'N'(0-10) spacer-linked method
+T4,Listeria,0.140314216, 'N'(0-10) spacer-linked method
+T4,Pseudomonas,0.0828554, 'N'(0-10) spacer-linked method
+T4,Salmonella,0.1469036, 'N'(0-10) spacer-linked method
+T4,Staphylococcus,0.158793472, 'N'(0-10) spacer-linked method
+T4,Others,0.003965833, 'N'(0-10) spacer-linked method

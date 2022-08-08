@@ -1,0 +1,353 @@
+---
+title: "New-method_NGGF_Final"
+author: "kvirbhadra"
+date: "08/08/2022"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+#################################################################################
+
+Important resources:
+
+- The [DADA2 Website](https://benjjneb.github.io/dada2/index.html)
+- The [DADA2 tutorial workflow](https://benjjneb.github.io/dada2/tutorial.html)
+- The [DADA2 Issues forum](https://github.com/benjjneb/dada2/issues)
+- The [DADA2 Installation] (https://benjjneb.github.io/dada2/dada-installation.html)
+
+# The DADA2 Workflow
+
+Preprocessing -> Filter and Trim ->Learn Error Rates ->Denoise/Sample Inference ->Merge (if paired-end) ->Remove Chimeras ->Assign Taxonomy
+
+Throughout: Sanity checks!
+
+# Preprocessing, Filtering and Trimming
+
+Trimming using in house tool MetReTrim, with options to trim primers as well as adapters with 'N (0-10)' heterogeneity spacers.In our case we performed primer trimming in DADA2.
+Before starting with DADA2 pipeline it should be ensured that:
+- Samples have been demultiplexed, i.e. split into individual per-sample fastq files.
+- Non-biological nucleotides have been removed, e.g. primers, adapters, linkers, etc.
+- If paired-end sequencing data, the forward and reverse fastq files contain reads in matched order.
+
+```{r Working directory}
+library(dada2); packageVersion("dada2")
+path <- "F:/R-DADA2/New_method_NGGF/WC_New_Method/Data"
+```
+
+Verifying files present in working directory, sorting and extracting sample names.Extracting sample names, assuming file names have format: SAMPLENAME_XX.fastq.gz
+
+0N -> Illumina standard method
+10N -> 'N'(0-10) spacer-linked method
+
+# Food for thoughts
+
+coi? trnL? amoA? ITS1? ITS2? cpn60? 18S? ...
+16S: v1-v2? v1-v3? v4? v3-v4? v4-v5? ...
+
+How long is it? Length variation?
+
+Did you sequence your primers? Are you sure?
+
+Note: Reads for our methods are trimmed of heterogeneity spacers using MetReTrim (Ver:1). Output file for MetReTrim contains "trimmed" as extension just before ".fastq". User can either manually edit the files or modify the code to read MetReTrim processed files here. No change needed for standard Illumina method since those reads do not require MetReTrim processing. 
+
+```{r}
+list.files(path)
+fnFs <- sort(list.files(path, pattern="_R1_001.fastq", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_R2_001.fastq", full.names = TRUE))
+sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
+head(sample.names)
+```
+
+# Quality profile plots
+
+Plotting quality profiles of reads to visually estimate the cutting parameters since "figaro" cannot be used with varying length reads. Quality profile plotting should range from 1 to N where N is the total number of samples whose reads are in working directory.
+
+```{r}
+plotQualityProfile(fnFs[1:10])
+plotQualityProfile(fnRs[1:10])
+```
+
+# Filter and Trim
+
+Next step is filtering and trimming data based on quality scores. "trunclen" should be visually assessed observing the quality of cumulative Read 1 and Read 2 for each sample and keeping Phred score above 20 atleast. For our datasets we estimated 260 to be an appropriate cutoff for Read 1 and 230 for read 2. 
+
+maxEE parameter was a bit relaxed (default=2) for reverse reads than in the DADA2 tutorial considering lower quality of reverse reads in amplicon sequencing. matchIDs were enabled and kept True since total number of R1 and R2 sometimes didn't tally after processing with MetReTrim.
+
+For further details consult the Filter and Trim section in the documentation available on DADA2 website.Primer trimming for all the reads are performed here. 
+
+```{r}
+filtFs <- file.path(path, "filtered", paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
+names(filtFs) <- sample.names
+names(filtRs) <- sample.names
+out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(260,230),
+                     maxN=0, maxEE=c(2,5), truncQ=2, rm.phix=TRUE,
+                     compress=TRUE, multithread=FALSE, matchIDs=TRUE, trimLeft = c(17,21)) #Set multithread=TRUE to use all cores
+```
+# Assessing the quality of the filtered reads
+
+**Questions**
+
+- What fraction of reads were kept?
+- Was that fraction reasonably consistent among samples?
+- Were enough reads kept to achieve your analysis goals?
+
+```{r}
+head(out)
+plotQualityProfile(filtFs,aggregate=TRUE)
+plotQualityProfile(filtRs,aggregate=TRUE)
+```
+
+# Error function and sanity checks!
+
+Learning error rates and denoising data. This step took a while. 
+
+**Questions**
+
+- Does the model (red line) reasonably fit the observations (black points)?
+- Do the error rates mostly decrease with quality score?
+
+```{r}
+errF <- learnErrors(filtFs, multithread=TRUE)
+errR <- learnErrors(filtRs, multithread=TRUE)
+plotErrors(errF, nominalQ=TRUE)
+plotErrors(errR, nominalQ=TRUE)
+dadaFs <- dada(filtFs, err=errF, multithread=TRUE)
+dadaRs <- dada(filtRs, err=errR, multithread=TRUE)
+
+```
+
+
+```{r}
+dadaFs[[1]]
+```
+
+
+The `getSequences` and `getUniques` functions work on just about any dada2-created object. `getUniques` returns an integer vector, named by the sequences and valued by their abundances. While,`getSequences` just returns the sequences.
+
+
+```{r}
+head(getSequences(dadaFs[[1]]))
+head(getSequences(dadaRs[[1]]))
+```
+
+# Merging, Tabulating and, Removing Chimeras:
+
+Merging of forward and reverse filtered reads. After mergers look into the data frame created to check for overlaps. More that sufficient overlap was there for reads from both the runs. 
+
+```{r}
+mergers <- mergePairs(dadaFs, filtFs, dadaRs, filtRs, verbose=TRUE)
+head(mergers[[1]])
+```
+```{r}
+seqtab <- makeSequenceTable(mergers)
+dim(seqtab)
+```
+
+Chimeric sequences are identified if they can be exactly reconstructed by combining a left-segment and a right-segment from two more abundant "parent" sequences.
+
+```{r}
+seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
+dim(seqtab.nochim)
+```
+
+Writing CSV output of sequence table
+
+```{r}
+write.csv(seqtab.nochim,"seqtabN_nochim.csv", row.names = TRUE)
+```
+
+# Fraction of non-chimeric reads
+
+```{r}
+sum(seqtab.nochim)/sum(seqtab)
+```
+
+**In some cases, most sequences will be chimeric. But most reads should not be. If they are, you probably have unremoved primers.**
+
+# Tracking reads through the pipeline
+
+```{r}
+getN <- function(x) sum(getUniques(x))
+track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim))
+colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim")
+rownames(track) <- sample.names
+head(track)
+```
+Points to think upon
+
+- If a majority of reads failed to merge, you may need to revisit `truncLen` to ensure overlap.
+- If a majority of reads were removed as chimeric, you may have unremoved primers.
+
+**This is the single most important place to inspect your workflow to make sure everything went as expected!**
+
+# Assigning Taxonomy
+
+The dada2 `assignTaxonomy` function is just a reimplementation of the naive Bayesian classifer developed as part of the RDP project. It is based on shredding reads into kmers, matching against a reference database, and assigning if classification is consistent over subsets of the shredded reads.
+
+Takes a while (we used the official silva database (ver: 138.1) to assign taxonomy as its shown to perform better than Greengenes and other public databases). Assigning species level identification can be skipped since it's usually very less informative.
+
+Having a good reference database is usually **much more important** than the difference between the good taxonomic assignment methods.
+
+What is the reference database for your metabarcoding locus? Is it comprehensive? Appropriate for the environments you are sampling? Do you need to augment or construct your own?
+
+```{r}
+taxa <- assignTaxonomy(seqtab.nochim, "F:/R-DADA2/dada2-1.16/silva_nr99_v138.1_train_set.fa.gz", multithread=TRUE)
+taxa <- addSpecies(taxa, "F:/R-DADA2/dada2-1.16/silva_species_assignment_v138.1.fa.gz")
+taxa.print <- taxa
+rownames(taxa.print) <- NULL
+head(taxa.print)
+```
+
+# Writing the Taxa output in a csv file for further analysis
+ 
+Further analysis of seqtab.nochim and taxa csv's can be performed in excel as well as in DADA2, depends on personal preferences.
+ 
+```{r}
+write.csv(taxa,"taxaN.csv", row.names = TRUE)
+```
+
+# Phyloseq package for exploring microbiome profiling
+
+phyloseq package is widely accepted for downstream analysis of assigned taxonomic datasets.
+
+```{r}
+library(phyloseq); packageVersion("phyloseq")
+library(Biostrings); packageVersion("Biostrings")
+library(ggplot2); packageVersion("ggplot2")
+```
+
+Theme setting for bar plots using theme brewer
+
+```{r}
+theme_set(theme_bw())
+```
+
+# Phyloseq object creation
+
+Moving data (handoff) from DADA2 to Phyloseq object and adding metadata at this step (we didn't add any metadata here) Sample metadata can be added in this step and the code can be modified accordingly.
+
+```{r}
+samples.out <- rownames(seqtab.nochim)
+subject <- sapply(strsplit(samples.out, "/"), `[`, 1) 
+
+#no need to do it in our case but we kept it so that users can easily modify it here and move forward.
+
+samdf <- data.frame(Samples=subject)
+rownames(samdf) <- samples.out
+ps <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows=FALSE), 
+               sample_data(samdf), 
+               tax_table(taxa))
+ps <- prune_samples(sample_names(ps) != "Mock", ps)
+dna <- Biostrings::DNAStringSet(taxa_names(ps))
+names(dna) <- taxa_names(ps)
+ps <- merge_phyloseq(ps, dna)
+taxa_names(ps) <- paste0("ASV", seq(ntaxa(ps)))
+ps
+```
+
+# Shannon, simpson indices, Bray curtis NMDS plots
+
+Shannon, simpson and bray curtis analysis are important when studying the diversity and other parameters of sample or groups.We need more data points, however in this study we didn't had many samples but a controlled predefined Mock. Users can perform this once the sample metadata is introduced in the earlier steps.
+
+```{r}
+plot_richness(ps, x="Samples", measures=c("Shannon", "Simpson"))
+ps.prop <- transform_sample_counts(ps, function(otu) otu/sum(otu))
+ord.nmds.bray <- ordinate(ps.prop, method="NMDS", distance="bray")
+plot_ordination(ps.prop, ord.nmds.bray, title="Bray NMDS")
+```
+
+# Abundance plots (family/genus) levels
+
+top x (=20 in demo) no of genus are displayed based on abundance (However, our standard mock has only 8 bacterial genus present so we could go with just 9 or 10 as well)
+
+```{r}
+top20 <- names(sort(taxa_sums(ps), decreasing=TRUE))[1:20]
+ps.top20 <- transform_sample_counts(ps, function(OTU) OTU/sum(OTU))
+ps.top20 <- prune_taxa(top20, ps.top20)
+```
+
+# Family level abundance
+
+```{r}
+plot_bar(ps.top20, x="Samples", fill="Family")+scale_fill_brewer(palette="Set3")
+```
+
+# Genus level abundance
+
+Since we asked for top 20 genus, genus with extremely low number of reads are displayed in the legends as well. We leave it upto the users to take away data from here as per their requirements. 
+
+```{r}
+plot_bar(ps.top20, x="Samples", fill="Genus")+scale_fill_brewer(palette="Set3")
+```
+```{r}
+plot_bar(ps.top20, x="Samples", fill="Genus")+scale_fill_brewer(palette="Set3")+coord_polar()
+```
+
+However, we don't need genus with extremely low number of reads as they could be due to various artifacts, hence we used the exported csv files to prune the data a bit in excel. Finally the pruned data was imported for viewing as well.
+
+# Export to excel and make pivot table and do analysis in Excel based on proportions/relative abundance data
+
+Excel file where we did the pruning could be requested if needed.We import the selection into the data (data frame) here.
+
+```{r}
+data <- read.csv("F:/R-DADA2/Final run_github/Abundance Data.csv", header = TRUE)
+View(data)
+```
+
+Manual colors assigned (one can use a predefined color pallete as well, depends on what and how many variables a user wants to be color coded in the plot)
+
+```{r}
+ggplot(data, aes(x=Samples, y=Relative.Abundance, fill=Genus, label=Relative.Abundance)) +scale_fill_manual(values = c("#83FFD5", "#8B8879", "#CECD2C", "#7CC5CC","#C1CDC1","#D8BFD7","#FEC2CD","#AFDAE7","#C85A5D"))+geom_bar(stat="identity")+facet_wrap(~Group)
+
+```
+# Modifying axis labels and aesthetics of the plot 
+
+```{r}
+x <- ggplot(data, aes(x=Samples, y=Relative.Abundance, fill=Genus, label="Relative Abundance")) +scale_fill_manual(values = c("#83FFD5", "#8B8879", "#CECD2C", "#7CC5CC","#C1CDC1","#D8BFD7","#FEC2CD","#AFDAE7","#C85A5D"))+geom_bar(stat="identity")+facet_wrap(~Group)
+x +                                 # Modify axis labels
+  xlab("Sample") +
+  ylab("Relative Abundance (Genus Level)")
+```
+
+# Saving the recent image in desired publishable format
+
+```{r}
+ggsave("relative abundance.tiff", plot=last_plot(),device="tiff", path=NULL, scale = 1,width=170,height = NA, units = c("mm"),dpi = 300,limitsize = TRUE,bg=NULL)
+
+```
+
+
+# Rarefaction study (if intended)
+
+Not relevant for our study given we sequenced the samples for more than enough depth. Anyways we did it just to verify if we sequenced enough to capture most of the genus in the Mock community standard provided.
+
+```{r}
+library(vegan)
+rarecurve <- rarecurve((otu_table(ps)), step=1, cex=0.5, label=TRUE, col="blue", xlab = "Sequencing depth (number of reads)", ylab = "ASV's")
+
+```
+
+# Chi-squared test in R
+
+We performed the same in GraphPad Prism with high degree of accuracy. 
+
+```{r}
+# dat<-read.delim("clipboard", stringsAsFactors = F)   ##needed when you have the data in clipboard
+dat<-matrix(c(18,16,11,11,14,15,3.5,4,15,14,8,8,14,15,0.35,0.32,15,16),ncol = 2,byrow=T) #mean of relative abundance fed manually
+colnames(dat)<-c("Standard illumina method","'N' (0-10) spacer-linked method")
+row.names(dat)<-c("A","B","C","D","E","F","G","H","I")    #Since we had 8+1 variables after pruning in excel
+dat1<-as.table(dat)
+chisq.test(dat1, correct = T)
+
+```
+
+
+
+That's all!
+
